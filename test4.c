@@ -48,16 +48,16 @@ int main(int argc, char **argv)
   
   numOpenCLPrograms = 1;
   const char *opencl_program = 
-  "__kernel void vecadd(__global const int *a, __global const int *b, __global int *c, __global const int *matdim1, __global const int *matdim2, __global const int *matdim3)\n"
+  "__kernel void vecadd(__global const int *a, __global const int *b, __global int *c, __global const int *matdims)\n"
   "{\n"
   "__private uint gid = get_global_id(0);\n"
   "__private int counter1,counter2;\n"
   "__private int sum;\n"
   "int dim1,dim2,dim3;\n"
   
-  "dim1 = matdim1[0];\n"
-  "dim2 = matdim2[0];\n"
-  "dim3 = matdim3[0];\n"
+  "dim1 = matdims[0];\n"
+  "dim2 = matdims[1];\n"
+  "dim3 = matdims[2];\n"
   "for(counter1=0; counter1<dim3; counter1++)\n"
   "{\n"
   "sum=0;\n"
@@ -84,21 +84,23 @@ int main(int argc, char **argv)
   //create memory buffers
   cl_mem_flags a_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
-  cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;
-  cl_int mat_dims = 1000;
+  cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;  
   cl_int dim1, dim2, dim3;
-  dim1 = dim2 = dim3 = mat_dims;
+  dim1 = 20;
+  dim2 = 30;
+  dim3 = 3;
+  cl_int mat_dims[3] = {dim1, dim2, dim3};
   cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
   size_t a_buffer_size = dim1 * dim2;
   size_t b_buffer_size = dim2 * dim3;
   size_t c_buffer_size = dim1 * dim3;
-  size_t dim_buffer_size = sizeof(cl_int);
+  size_t dim_buffer_size = sizeof(mat_dims);
   cl_int *a, *b, *c;
   a = (cl_int *) calloc(a_buffer_size, sizeof(cl_int));
   b = (cl_int *) calloc(b_buffer_size, sizeof(cl_int));
   //initialize a and b
-  unsigned int counter;
-  printf("\nContents of array A:\n");
+  unsigned int counter;  
+  printf("Contents of array A:\n");
   for(counter=0; counter<a_buffer_size; counter++)
   {
     a[counter] = 1;
@@ -120,21 +122,15 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clCreateBuffer(b)");
   cl_mem c_buffer = clCreateBuffer(context, c_buffer_flags, c_buffer_size*sizeof(cl_int), NULL, &errorcode);
   checkErr(errorcode, "clCreateBuffer(c)");
-  cl_mem dim1_buffer, dim2_buffer, dim3_buffer;
-  dim1_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim1, &errorcode);
-  checkErr(errorcode, "clCreateBuffer(dim1)");
-  dim2_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim2, &errorcode);
-  checkErr(errorcode, "clCreateBuffer(dim2)");
-  dim3_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim3, &errorcode);
-  checkErr(errorcode, "clCreateBuffer(dim3)");
+  cl_mem dim_buffer;
+  dim_buffer = clCreateBuffer(context, dim_buffer_flags, dim_buffer_size, (void *) mat_dims, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(dim_buffer)");
   
   //create kernel arguments
   clSetKernelArg(kernel, 0, sizeof(a_buffer), (void *) &a_buffer);
   clSetKernelArg(kernel, 1, sizeof(b_buffer), (void *) &b_buffer);
   clSetKernelArg(kernel, 2, sizeof(c_buffer), (void *) &c_buffer);
-  clSetKernelArg(kernel, 3, sizeof(dim1_buffer), (void *) &dim1_buffer);
-  clSetKernelArg(kernel, 4, sizeof(dim2_buffer), (void *) &dim2_buffer);
-  clSetKernelArg(kernel, 5, sizeof(dim3_buffer), (void *) &dim3_buffer);
+  clSetKernelArg(kernel, 3, sizeof(dim_buffer), (void *) &dim_buffer);
   
   //enqueue kernel for execution
   cl_uint global_work_dim;
@@ -144,15 +140,15 @@ int main(int argc, char **argv)
   global_work_dim = 1;
   global_work_size = dim1;
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
-  checkErr(errorcode, "clEnqueueNDRangeKernel");
-  
-  //waits for all the jobs in that queue to finish
-  clFinish(queue);
+  checkErr(errorcode, "clEnqueueNDRangeKernel");  
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
   c = (cl_int *) clEnqueueMapBuffer(queue, c_buffer, CL_TRUE, CL_MAP_READ, 0, c_buffer_size*sizeof(cl_int), 0, NULL, &memReadEvent, &errorcode);
   checkErr(errorcode, "clEnqueueMapBuffer");
+  
+  //waits for all the jobs in that queue to finish
+  clFinish(queue);
   
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
