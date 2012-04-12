@@ -28,7 +28,7 @@ int main(int argc, char **argv)
   cl_device_type deviceType;
   cl_uint numDevices, numDevicesReturned;
   
-  deviceType = CL_DEVICE_TYPE_GPU;
+  deviceType = CL_DEVICE_TYPE_CPU;
   numEntries = 1;
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
@@ -48,21 +48,22 @@ int main(int argc, char **argv)
   
   numOpenCLPrograms = 1;
   const char *opencl_program = 
-  "__kernel void vecadd(const __global int *a, const __global int *b,__global int *c, const __global int *matdim)\n"
+  "__kernel void vecadd(__global const int *a, __global const int *b, __global int *c, __global const int *matdim1, __global const int *matdim2, __global const int *matdim3)\n"
   "{\n"
-  "uint gid = get_global_id(0);\n"
-  "int dimensions = matdim[0];\n"
-  "int numrows=dimensions, numcols=dimensions;\n"
-  "int counter1,counter2;\n"
-  "int sum;"
-  "for(counter1=0; counter1<numcols; counter1++)\n"
+  "__private uint gid = get_global_id(0);\n"
+  "__private int counter1,counter2;\n"
+  "__private int sum;\n"
+  "int dim1,dim2,dim3;\n"
+  
+  "dim1 = matdim1[0];\n"
+  "dim2 = matdim2[0];\n"
+  "dim3 = matdim3[0];\n"
+  "for(counter1=0; counter1<dim3; counter1++)\n"
   "{\n"
   "sum=0;\n"
-  "for(counter2=0; counter2<numcols; counter2++)\n"
-  "{\n"
-  "sum = sum + a[gid*numcols + counter2]*b[counter2*numcols + counter1];\n"
-  "}\n"
-  "c[gid*numcols + counter1] = sum;\n"
+  "for(counter2=0; counter2<dim2; counter2++)\n"  
+  "{ sum = sum + a[gid*dim2 + counter2]*b[counter2*dim3 + counter1]; }\n"  
+  "c[gid*dim3 + counter1] = sum;\n"
   "}\n"
   "}\n";
   
@@ -72,7 +73,7 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clCreateProgramWithSource");
   
   //build OpenCL program
-  errorcode = clBuildProgram(program, numDevices, &device, NULL, NULL, NULL);  
+  errorcode = clBuildProgram(program, numDevices, &device, NULL, NULL, NULL);
   checkErr(errorcode, "clBuildProgram");
 
   char *execKernelString = "vecadd";
@@ -84,16 +85,19 @@ int main(int argc, char **argv)
   cl_mem_flags a_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;
-  cl_int mat_dims = 100;
-  size_t array_sizes = mat_dims * mat_dims;
-  size_t a_buffer_size = array_sizes;
-  size_t b_buffer_size = array_sizes;
-  size_t c_buffer_size = array_sizes;
-  int *a, *b, *c;
-  a = (int *) calloc(a_buffer_size, sizeof(int));
-  b = (int *) calloc(b_buffer_size, sizeof(int)); 
+  cl_int mat_dims = 1000;
+  cl_int dim1, dim2, dim3;
+  dim1 = dim2 = dim3 = mat_dims;
+  cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
+  size_t a_buffer_size = dim1 * dim2;
+  size_t b_buffer_size = dim2 * dim3;
+  size_t c_buffer_size = dim1 * dim3;
+  size_t dim_buffer_size = sizeof(cl_int);
+  cl_int *a, *b, *c;
+  a = (cl_int *) calloc(a_buffer_size, sizeof(cl_int));
+  b = (cl_int *) calloc(b_buffer_size, sizeof(cl_int));
   //initialize a and b
-  int counter;  
+  unsigned int counter;
   printf("\nContents of array A:\n");
   for(counter=0; counter<a_buffer_size; counter++)
   {
@@ -110,20 +114,27 @@ int main(int argc, char **argv)
   }
   printf("\n");
   
-  cl_mem a_buffer = clCreateBuffer(context, a_buffer_flags, a_buffer_size*sizeof(int), (void *)a, &errorcode);
+  cl_mem a_buffer = clCreateBuffer(context, a_buffer_flags, a_buffer_size*sizeof(cl_int), (void *)a, &errorcode);
   checkErr(errorcode, "clCreateBuffer(a)");
-  cl_mem b_buffer = clCreateBuffer(context, b_buffer_flags, b_buffer_size*sizeof(int), (void *)b, &errorcode);
+  cl_mem b_buffer = clCreateBuffer(context, b_buffer_flags, b_buffer_size*sizeof(cl_int), (void *)b, &errorcode);
   checkErr(errorcode, "clCreateBuffer(b)");
-  cl_mem c_buffer = clCreateBuffer(context, c_buffer_flags, c_buffer_size*sizeof(int), NULL, &errorcode);
+  cl_mem c_buffer = clCreateBuffer(context, c_buffer_flags, c_buffer_size*sizeof(cl_int), NULL, &errorcode);
   checkErr(errorcode, "clCreateBuffer(c)");
-  cl_mem matdim_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, sizeof(cl_int), (void *) &mat_dims, &errorcode);
-  checkErr(errorcode, "clCreateBuffer(mat_dims)");
+  cl_mem dim1_buffer, dim2_buffer, dim3_buffer;
+  dim1_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim1, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(dim1)");
+  dim2_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim2, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(dim2)");
+  dim3_buffer = clCreateBuffer(context, dim_buffer_flags, sizeof(cl_int), (void *) &dim3, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(dim3)");
   
   //create kernel arguments
   clSetKernelArg(kernel, 0, sizeof(a_buffer), (void *) &a_buffer);
   clSetKernelArg(kernel, 1, sizeof(b_buffer), (void *) &b_buffer);
   clSetKernelArg(kernel, 2, sizeof(c_buffer), (void *) &c_buffer);
-  clSetKernelArg(kernel, 3, sizeof(matdim_buffer), (void *) &matdim_buffer);
+  clSetKernelArg(kernel, 3, sizeof(dim1_buffer), (void *) &dim1_buffer);
+  clSetKernelArg(kernel, 4, sizeof(dim2_buffer), (void *) &dim2_buffer);
+  clSetKernelArg(kernel, 5, sizeof(dim3_buffer), (void *) &dim3_buffer);
   
   //enqueue kernel for execution
   cl_uint global_work_dim;
@@ -131,7 +142,7 @@ int main(int argc, char **argv)
   cl_event addKernelEvent;
   
   global_work_dim = 1;
-  global_work_size = mat_dims;
+  global_work_size = dim1;
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
   checkErr(errorcode, "clEnqueueNDRangeKernel");
   
@@ -140,7 +151,7 @@ int main(int argc, char **argv)
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
-  c = (int *) clEnqueueMapBuffer(queue, c_buffer, CL_TRUE, CL_MAP_READ, 0, c_buffer_size*sizeof(int), 0, NULL, &memReadEvent, &errorcode);
+  c = (cl_int *) clEnqueueMapBuffer(queue, c_buffer, CL_TRUE, CL_MAP_READ, 0, c_buffer_size*sizeof(cl_int), 0, NULL, &memReadEvent, &errorcode);
   checkErr(errorcode, "clEnqueueMapBuffer");
   
   printf("\nContents of array C:\n");
