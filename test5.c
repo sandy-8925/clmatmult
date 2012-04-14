@@ -23,6 +23,12 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clGetPlatformIDs");
   printf("Number of available OpenCL platforms is %d\n", numPlatforms);
   
+  char openclVersionString[100];
+  cl_platform_info param = CL_PLATFORM_VERSION;
+  errorcode = clGetPlatformInfo(platform, param, sizeof(openclVersionString), openclVersionString, NULL);
+  checkErr(errorcode, "clGetPlatformInfo");
+  printf("OpenCL version string: %s\n", openclVersionString);
+  
   cl_device_id device;
   cl_device_type deviceType;
   cl_uint numDevices;

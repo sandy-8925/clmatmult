@@ -1,4 +1,4 @@
-all: test1 test2 test3 
+all: test1 test2 test3 test4 test5
 
 test1: test1.c
 	gcc test1.c -o test1 -lOpenCL -I/opt/AMDAPP/include -L/opt/AMDAPP/lib
@@ -11,4 +11,7 @@ test3: test3.c
 
 test4: test4.c
 	gcc test4.c -o test4 -lOpenCL -I/opt/AMDAPP/include -L/opt/AMDAPP/lib
+
+test5: test5.c
+	gcc test5.c -o test5 -lOpenCL -I/opt/AMDAPP/include -L/opt/AMDAPP/lib
 
