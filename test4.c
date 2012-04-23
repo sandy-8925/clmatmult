@@ -4,6 +4,10 @@
 #include <string.h>
 #include <math.h>
 
+cl_int *a, *b, *c;
+cl_uint *rowinfo;
+
+
 void checkErr(cl_int err, const char *name)
 {
   if(err != CL_SUCCESS)
@@ -13,12 +17,20 @@ void checkErr(cl_int err, const char *name)
   }
 }
 
+void thatsAllFolks()
+{
+  if(a)  free(a);
+  if(b)  free(b);
+  if(rowinfo)  free(rowinfo);
+}
+
 int main(int argc, char **argv)
 {
   cl_platform_id platform;
   cl_uint numPlatforms, numEntries;
   cl_int errorcode;
   
+  a = b = NULL;
   
   //get list of platforms. choose one platform
   numEntries = 1;
@@ -29,7 +41,7 @@ int main(int argc, char **argv)
   cl_device_type deviceType;
   cl_uint numDevices, numDevicesReturned;
   
-  deviceType = CL_DEVICE_TYPE_CPU;
+  deviceType = CL_DEVICE_TYPE_GPU;
   numEntries = 1;
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
@@ -91,18 +103,27 @@ int main(int argc, char **argv)
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;  
   cl_int dim1, dim2, dim3;
-  dim1 = 30;
-  dim2 = 30;
-  dim3 = 30;
+  dim1 = 100;
+  dim2 = 100;
+  dim3 = 100;
   cl_int mat_dims[3] = {dim1, dim2, dim3};
-  cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
+  cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   size_t a_buffer_size = dim1 * dim2;
   size_t b_buffer_size = dim2 * dim3;
   size_t c_buffer_size = dim1 * dim3;
   size_t dim_buffer_size = sizeof(mat_dims);
-  cl_int *a, *b, *c;
+  
   a = (cl_int *) calloc(a_buffer_size, sizeof(cl_int));
   b = (cl_int *) calloc(b_buffer_size, sizeof(cl_int));
+  
+  if(!a || !b)
+  {
+    printf("Error: unable to allocate memory for matrices\n");
+    printf("Exiting....\n");
+    thatsAllFolks();
+    return -1;
+  }
+  
   //initialize a and b
   unsigned int counter;  
   printf("Contents of array A:\n");
@@ -125,11 +146,18 @@ int main(int argc, char **argv)
   // global work size - number of work items
   size_t global_work_size;
   //set global work size
-  global_work_size = 10;
-  cl_uint *rowinfo = (cl_uint *) calloc(global_work_size, sizeof(cl_uint)*2), *temp, startingrownum;
+  global_work_size = 16;
+  rowinfo = (cl_uint *) calloc(global_work_size, sizeof(cl_uint)*2);
+  cl_uint *temp, startingrownum;
+  if(rowinfo == NULL)
+  {
+    printf("Error: unable to allocate memory for rowinfo matrix\nExiting...\n");
+    thatsAllFolks();
+    return -2;
+  }
+  
   size_t rowinfo_buffer_size = global_work_size * sizeof(cl_uint) * 2;
-  cl_mem_flags rowinfo_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
-  //TODO: check if rowinfo is NULL  
+  cl_mem_flags rowinfo_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
   cl_uint workperitem = (cl_uint) ceil(dim1/global_work_size), remainder;
   temp = rowinfo;
   startingrownum = 0;
@@ -181,10 +209,20 @@ int main(int argc, char **argv)
   //waits for all the jobs in that queue to finish
   clFinish(queue);
   
+  //TODO: check if c is NULL
+  if(c == NULL)
+  {
+    printf("Error: pointer to results is NULL\nExiting...\n");
+    thatsAllFolks();
+    return 0;
+  }
+  
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
   { printf("%d ", c[counter]); }
   printf("\n");  
+  
+  thatsAllFolks();
   
   return 0;
 }
