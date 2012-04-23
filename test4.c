@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 void checkErr(cl_int err, const char *name)
 {
@@ -14,7 +15,7 @@ void checkErr(cl_int err, const char *name)
 
 int main(int argc, char **argv)
 {
-  cl_platform_id platform;  
+  cl_platform_id platform;
   cl_uint numPlatforms, numEntries;
   cl_int errorcode;
   
@@ -22,7 +23,7 @@ int main(int argc, char **argv)
   //get list of platforms. choose one platform
   numEntries = 1;
   errorcode = clGetPlatformIDs(numEntries, &platform, &numPlatforms);
-  checkErr(errorcode, "clGetPlatformIDs");  
+  checkErr(errorcode, "clGetPlatformIDs");
   
   cl_device_id device;
   cl_device_type deviceType;
@@ -48,22 +49,26 @@ int main(int argc, char **argv)
   
   numOpenCLPrograms = 1;
   const char *opencl_program = 
-  "__kernel void vecadd(__global const int *a, __global const int *b, __global int *c, __global const int *matdims)\n"
+  "__kernel void vecadd(__global const int *a, __global const int *b, __global int *c, __global const int *matdims, __global const uint *rowinfo)\n"
   "{\n"
   "__private uint gid = get_global_id(0);\n"
-  "__private int counter1,counter2;\n"
+  "__private uint startingrownum = rowinfo[gid*2];\n"
+  "__private uint numrows = rowinfo[gid*2 + 1];\n"
+  "__private int counter1, counter2, counter3;\n"
   "__private int sum;\n"
-  "int dim1,dim2,dim3;\n"
-  
+  "int dim1,dim2,dim3;\n"  
   "dim1 = matdims[0];\n"
   "dim2 = matdims[1];\n"
   "dim3 = matdims[2];\n"
+  "for(counter3=startingrownum; counter3<startingrownum + numrows; counter3++)\n"
+  "{\n"
   "for(counter1=0; counter1<dim3; counter1++)\n"
   "{\n"
   "sum=0;\n"
-  "for(counter2=0; counter2<dim2; counter2++)\n"  
-  "{ sum = sum + a[gid*dim2 + counter2]*b[counter2*dim3 + counter1]; }\n"  
-  "c[gid*dim3 + counter1] = sum;\n"
+  "for(counter2=0; counter2<dim2; counter2++)\n"
+  "{ sum = sum + a[counter3*dim2 + counter2]*b[counter2*dim3 + counter1]; }\n"
+  "c[counter3*dim3 + counter1] = sum;\n"
+  "}\n"
   "}\n"
   "}\n";
   
@@ -86,9 +91,9 @@ int main(int argc, char **argv)
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;  
   cl_int dim1, dim2, dim3;
-  dim1 = 20;
+  dim1 = 30;
   dim2 = 30;
-  dim3 = 3;
+  dim3 = 30;
   cl_int mat_dims[3] = {dim1, dim2, dim3};
   cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
   size_t a_buffer_size = dim1 * dim2;
@@ -116,31 +121,57 @@ int main(int argc, char **argv)
   }
   printf("\n");
   
+  /* distribute work equally among work items */
+  // global work size - number of work items
+  size_t global_work_size;
+  //set global work size
+  global_work_size = 10;
+  cl_uint *rowinfo = (cl_uint *) calloc(global_work_size, sizeof(cl_uint)*2), *temp, startingrownum;
+  size_t rowinfo_buffer_size = global_work_size * sizeof(cl_uint) * 2;
+  cl_mem_flags rowinfo_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
+  //TODO: check if rowinfo is NULL  
+  cl_uint workperitem = (cl_uint) ceil(dim1/global_work_size), remainder;
+  temp = rowinfo;
+  startingrownum = 0;
+  for(counter=0; counter<global_work_size; counter++)
+  {
+    *temp = startingrownum;
+    temp++;
+    *temp = workperitem;
+    startingrownum += workperitem;
+    temp++;
+  }
+  temp--;
+  remainder = dim1 - workperitem*(global_work_size-1);
+  *temp = remainder;
+  temp = NULL;
+  
+  
   cl_mem a_buffer = clCreateBuffer(context, a_buffer_flags, a_buffer_size*sizeof(cl_int), (void *)a, &errorcode);
   checkErr(errorcode, "clCreateBuffer(a)");
   cl_mem b_buffer = clCreateBuffer(context, b_buffer_flags, b_buffer_size*sizeof(cl_int), (void *)b, &errorcode);
   checkErr(errorcode, "clCreateBuffer(b)");
   cl_mem c_buffer = clCreateBuffer(context, c_buffer_flags, c_buffer_size*sizeof(cl_int), NULL, &errorcode);
-  checkErr(errorcode, "clCreateBuffer(c)");
-  cl_mem dim_buffer;
-  dim_buffer = clCreateBuffer(context, dim_buffer_flags, dim_buffer_size, (void *) mat_dims, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(c)");  
+  cl_mem dim_buffer = clCreateBuffer(context, dim_buffer_flags, dim_buffer_size, (void *) mat_dims, &errorcode);
   checkErr(errorcode, "clCreateBuffer(dim_buffer)");
+  cl_mem rowinfo_buffer = clCreateBuffer(context, rowinfo_buffer_flags, rowinfo_buffer_size, (void *) rowinfo, &errorcode);
+  checkErr(errorcode, "clCreateBuffer(rowinfo_buffer)");
   
   //create kernel arguments
   clSetKernelArg(kernel, 0, sizeof(a_buffer), (void *) &a_buffer);
   clSetKernelArg(kernel, 1, sizeof(b_buffer), (void *) &b_buffer);
   clSetKernelArg(kernel, 2, sizeof(c_buffer), (void *) &c_buffer);
   clSetKernelArg(kernel, 3, sizeof(dim_buffer), (void *) &dim_buffer);
+  clSetKernelArg(kernel, 4, sizeof(rowinfo_buffer), (void *) &rowinfo_buffer);
   
   //enqueue kernel for execution
-  cl_uint global_work_dim;
-  size_t global_work_size;
+  cl_uint global_work_dim;  
   cl_event addKernelEvent;
   
   global_work_dim = 1;
-  global_work_size = dim1;
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
-  checkErr(errorcode, "clEnqueueNDRangeKernel");  
+  checkErr(errorcode, "clEnqueueNDRangeKernel");
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
