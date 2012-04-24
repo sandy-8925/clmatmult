@@ -28,7 +28,7 @@ int main(int argc, char **argv)
   cl_device_type deviceType;
   cl_uint numDevices, numDevicesReturned;
   
-  deviceType = CL_DEVICE_TYPE_CPU;
+  deviceType = CL_DEVICE_TYPE_GPU;
   numEntries = 1;
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
@@ -128,14 +128,14 @@ int main(int argc, char **argv)
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
   checkErr(errorcode, "clEnqueueNDRangeKernel");
   
-  //finish queue - don't know why yet
-  clFinish(queue);
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
   c = (int *) clEnqueueMapBuffer(queue, c_buffer, CL_TRUE, CL_MAP_READ, 0, c_buffer_size*sizeof(int), 0, NULL, &memReadEvent, &errorcode);
   checkErr(errorcode, "clEnqueueMapBuffer");
   
+  //finish queue - don't know why yet
+  clFinish(queue);
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
   { printf("%d ", c[counter]); }

@@ -35,11 +35,11 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clGetDeviceIDs");
   printf("Total number of OpenCL devices is %d\n", numDevices);
   
-  deviceType = CL_DEVICE_TYPE_CPU;
+  deviceType = CL_DEVICE_TYPE_GPU;
   numEntries = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, 0, NULL, &numDevices);
   checkErr(errorcode, "clGetDeviceIDs");
-  printf("Number of CPU devices is %d\n", numDevices);
+  printf("Number of GPU devices is %d\n", numDevices);
   
   //get number of GPU devices
   deviceType = CL_DEVICE_TYPE_GPU;
@@ -47,9 +47,9 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clGetDeviceIDs");
   printf("Number of GPU devices is %d\n", numDevices);
   
-  //get CPU device info
-  printf("CPU device info\n");
-  deviceType = CL_DEVICE_TYPE_CPU;
+  //get GPU device info
+  printf("GPU device info\n");
+  deviceType = CL_DEVICE_TYPE_GPU;
   numEntries = 1;
   device = NULL;
   errorcode = clGetDeviceIDs(platform, deviceType, numEntries, &device, &numDevices);
