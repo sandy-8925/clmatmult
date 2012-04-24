@@ -20,31 +20,39 @@ void checkErr(cl_int err, const char *name)
 void thatsAllFolks()
 {
   if(a)  free(a);
-  if(b)  free(b);
-  if(c) free(c);
+  if(b)  free(b);  
   if(rowinfo)  free(rowinfo);
 }
 
 int main(int argc, char **argv)
 {
   cl_platform_id platform;
-  cl_uint numPlatforms, numEntries;
-  cl_int errorcode;
+  cl_uint numPlatforms, numEntries, numDevices, numDevicesReturned;
+  cl_int dim1, dim2, dim3, errorcode;
+  // global work size - number of work items
+  size_t global_work_size;
+  cl_device_id device;
+  cl_device_type deviceType;  
   
   a = b = NULL;
   rowinfo = NULL;
   c = NULL;
   
+  //set defaults for variables
+  dim1 = 1000;
+  dim2 = 1000;
+  dim3 = 1000;
+  global_work_size = 96;
+  deviceType = CL_DEVICE_TYPE_GPU;
+  
+  //check commandline arguments and process accordingly
+  
+  
   //get list of platforms. choose one platform
   numEntries = 1;
   errorcode = clGetPlatformIDs(numEntries, &platform, &numPlatforms);
   checkErr(errorcode, "clGetPlatformIDs");
-  
-  cl_device_id device;
-  cl_device_type deviceType;
-  cl_uint numDevices, numDevicesReturned;
-  
-  deviceType = CL_DEVICE_TYPE_GPU;
+    
   numEntries = 1;
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
@@ -105,10 +113,7 @@ int main(int argc, char **argv)
   cl_mem_flags a_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;
-  cl_int dim1, dim2, dim3;
-  dim1 = 1000;
-  dim2 = 1000;
-  dim3 = 1000;
+  
   cl_int mat_dims[3] = {dim1, dim2, dim3};
   cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   size_t a_buffer_size = dim1 * dim2;
@@ -146,10 +151,7 @@ int main(int argc, char **argv)
   printf("\n");
   
   /* distribute work equally among work items */
-  // global work size - number of work items
-  size_t global_work_size;
-  //set global work size
-  global_work_size = 96;
+  
   rowinfo = (cl_uint *) calloc(global_work_size, sizeof(cl_uint)*2);
   cl_uint *temp, startingrownum;
   if(rowinfo == NULL)
