@@ -21,6 +21,7 @@ void thatsAllFolks()
 {
   if(a)  free(a);
   if(b)  free(b);
+  if(c) free(c);
   if(rowinfo)  free(rowinfo);
 }
 
@@ -31,6 +32,8 @@ int main(int argc, char **argv)
   cl_int errorcode;
   
   a = b = NULL;
+  rowinfo = NULL;
+  c = NULL;
   
   //get list of platforms. choose one platform
   numEntries = 1;
@@ -68,7 +71,7 @@ int main(int argc, char **argv)
   "__private uint numrows = rowinfo[gid*2 + 1];\n"
   "__private int counter1, counter2, counter3;\n"
   "__private int sum;\n"
-  "int dim1,dim2,dim3;\n"  
+  "int dim1,dim2,dim3;\n"
   "dim1 = matdims[0];\n"
   "dim2 = matdims[1];\n"
   "dim3 = matdims[2];\n"
@@ -101,11 +104,11 @@ int main(int argc, char **argv)
   //create memory buffers
   cl_mem_flags a_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
-  cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;  
+  cl_mem_flags c_buffer_flags = CL_MEM_WRITE_ONLY;
   cl_int dim1, dim2, dim3;
-  dim1 = 100;
-  dim2 = 100;
-  dim3 = 100;
+  dim1 = 1000;
+  dim2 = 1000;
+  dim3 = 1000;
   cl_int mat_dims[3] = {dim1, dim2, dim3};
   cl_mem_flags dim_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   size_t a_buffer_size = dim1 * dim2;
@@ -146,7 +149,7 @@ int main(int argc, char **argv)
   // global work size - number of work items
   size_t global_work_size;
   //set global work size
-  global_work_size = 16;
+  global_work_size = 96;
   rowinfo = (cl_uint *) calloc(global_work_size, sizeof(cl_uint)*2);
   cl_uint *temp, startingrownum;
   if(rowinfo == NULL)
