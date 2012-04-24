@@ -57,7 +57,7 @@ int main(int argc, char **argv)
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
   checkErr(errorcode, "clGetDeviceIDs");
-  numDevices = numDevicesReturned;
+  //numDevices = numDevicesReturned;
   
   //create an OpenCL context
   cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform, 0};  
