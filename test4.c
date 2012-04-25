@@ -43,9 +43,30 @@ int main(int argc, char **argv)
   dim2 = 1000;
   dim3 = 1000;
   global_work_size = 96;
-  deviceType = CL_DEVICE_TYPE_GPU;
+  deviceType = CL_DEVICE_TYPE_CPU;
   
   //check commandline arguments and process accordingly
+  if(argc >= 2)
+  {    
+    if(atoi(argv[1]) > 0)
+    { global_work_size = atoi(argv[1]); }
+  }
+  if(argc >= 5)
+  {
+    if(atoi(argv[2]) > 0)
+    { dim1 = atoi(argv[2]); }
+    if(atoi(argv[3]) > 0)
+    { dim2 = atoi(argv[3]); }
+    if(atoi(argv[4]) > 0)
+    { dim3 = atoi(argv[4]); }
+  }
+  if(argc >= 6)
+  {
+    if(!strcmp(argv[5], "-g"))
+    { deviceType = CL_DEVICE_TYPE_GPU; }
+  }
+  
+  printf("dim1=%d , dim2=%d , dim3=%d\n", dim1, dim2, dim3);
   
   
   //get list of platforms. choose one platform
@@ -56,8 +77,7 @@ int main(int argc, char **argv)
   numEntries = 1;
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
-  checkErr(errorcode, "clGetDeviceIDs");
-  //numDevices = numDevicesReturned;
+  checkErr(errorcode, "clGetDeviceIDs");  
   
   //create an OpenCL context
   cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform, 0};  
