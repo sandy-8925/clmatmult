@@ -116,15 +116,15 @@ int main(int argc, char **argv)
   global_work_dim = 1;
   global_work_size = array_sizes;
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
-  checkErr(errorcode, "clEnqueueNDRangeKernel");
-  
-  //finish queue - don't know why yet
-  clFinish(queue);
+  checkErr(errorcode, "clEnqueueNDRangeKernel");  
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
   c = (int *) clEnqueueMapBuffer(queue, c_buffer, CL_TRUE, CL_MAP_READ, 0, c_buffer_size*sizeof(int), 0, NULL, &memReadEvent, &errorcode);
   checkErr(errorcode, "clEnqueueMapBuffer");
+  
+  //finish queue
+  clFinish(queue);
   
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
