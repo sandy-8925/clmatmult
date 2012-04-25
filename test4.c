@@ -61,6 +61,8 @@ int main(int argc, char **argv)
     { global_work_size = atoi(argv[4]); }
   }
   
+  printf("dim1=%d , dim2=%d , dim3=%d\n", dim1, dim2, dim3);
+  
   //get list of platforms. choose one platform
   numEntries = 1;
   errorcode = clGetPlatformIDs(numEntries, &platform, &numPlatforms);
