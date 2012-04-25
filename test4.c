@@ -46,7 +46,10 @@ int main(int argc, char **argv)
   deviceType = CL_DEVICE_TYPE_GPU;
   
   //check commandline arguments and process accordingly
+  if(argc >= 2)
+  {
   
+  }
   
   //get list of platforms. choose one platform
   numEntries = 1;
