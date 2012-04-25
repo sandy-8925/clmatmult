@@ -153,7 +153,7 @@ int main(int argc, char **argv)
   for(counter=0; counter<a_buffer_size; counter++)
   {
     a[counter] = 1;
-    printf("%d ", a[counter]);
+    //printf("%d ", a[counter]);
   }
   printf("\n");
   
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
   for(counter=0; counter<b_buffer_size; counter++)
   {
     b[counter] = 1;
-    printf("%d ", b[counter]);
+    //printf("%d ", b[counter]);
   }
   printf("\n");
   
@@ -237,10 +237,12 @@ int main(int argc, char **argv)
     return 0;
   }
   
+  /*
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
   { printf("%d ", c[counter]); }
   printf("\n");  
+  */
   
   thatsAllFolks();
   
