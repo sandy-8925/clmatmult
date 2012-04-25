@@ -47,8 +47,18 @@ int main(int argc, char **argv)
   
   //check commandline arguments and process accordingly
   if(argc >= 2)
+  {    
+    if(atoi(argv[1]) > 0)
+    { global_work_size = atoi(argv[1]); }
+  }
+  if(argc >= 5)
   {
-  
+    if(atoi(argv[2]) > 0)
+    { global_work_size = atoi(argv[2]); }
+    if(atoi(argv[3]) > 0)
+    { global_work_size = atoi(argv[3]); }
+    if(atoi(argv[4]) > 0)
+    { global_work_size = atoi(argv[4]); }
   }
   
   //get list of platforms. choose one platform
