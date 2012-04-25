@@ -39,10 +39,10 @@ int main(int argc, char **argv)
   c = NULL;
   
   //set defaults for variables
-  dim1 = 1000;
-  dim2 = 1000;
-  dim3 = 1000;
-  global_work_size = 96;
+  dim1 = 100;
+  dim2 = 100;
+  dim3 = 100;
+  global_work_size = 5;
   deviceType = CL_DEVICE_TYPE_GPU;
   
   //check commandline arguments and process accordingly
@@ -57,7 +57,6 @@ int main(int argc, char **argv)
   numDevices = 1;
   errorcode = clGetDeviceIDs(platform, deviceType, numDevices, &device, &numDevicesReturned);
   checkErr(errorcode, "clGetDeviceIDs");
-  numDevices = numDevicesReturned;
   
   //create an OpenCL context
   cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform, 0};  
@@ -109,6 +108,7 @@ int main(int argc, char **argv)
   cl_kernel kernel = clCreateKernel(program, execKernelString, &errorcode);
   checkErr(errorcode, "clCreateKernel");
   
+
   //create memory buffers
   cl_mem_flags a_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
   cl_mem_flags b_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;
@@ -231,3 +231,4 @@ int main(int argc, char **argv)
   
   return 0;
 }
+

@@ -10,7 +10,7 @@ test3: test3.c
 	nvcc test3.c -o test3 -lOpenCL
  
 test4: test4.c
-	nvcc test4.c -o test4 -lOpenCL 
+	nvcc test4.c -o test4 -lOpenCL -lm 
 
 test5: test5.c
 	nvcc test5.c -o test5 -lOpenCL 
