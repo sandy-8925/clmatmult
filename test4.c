@@ -227,9 +227,8 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clEnqueueMapBuffer");
   
   //waits for all the jobs in that queue to finish
-  clFinish(queue);
+  clFinish(queue);  
   
-  //TODO: check if c is NULL
   if(c == NULL)
   {
     printf("Error: pointer to results is NULL\nExiting...\n");
