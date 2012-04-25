@@ -99,22 +99,26 @@ int main(int argc, char **argv)
   "__private uint numrows = rowinfo[gid*2 + 1];\n"
   "__private int counter1, counter2, counter3;\n"
   "__private int sum;\n"
+  "global int *aptr, *bptr, *astart;\n"
   "int dim1,dim2,dim3;\n"
   "dim1 = matdims[0];\n"
   "dim2 = matdims[1];\n"
   "dim3 = matdims[2];\n"
   "for(counter3=startingrownum; counter3<startingrownum + numrows; counter3++)\n"
   "{\n"
+  "astart = a + counter3 * dim2;\n"
   "for(counter1=0; counter1<dim3; counter1++)\n"
   "{\n"
   "sum=0;\n"
-  "for(counter2=0; counter2<dim2; counter2++)\n"
-  "{ sum = sum + a[counter3*dim2 + counter2]*b[counter2*dim3 + counter1]; }\n"
+  "aptr = astart;\n"
+  "bptr = b + counter1;\n"
+  "for(counter2=0; counter2<dim2; counter2++, aptr++, bptr+=dim3)\n"
+  "{ sum = sum + ((*aptr) * (*bptr)); }\n"
   "c[counter3*dim3 + counter1] = sum;\n"
   "}\n"
   "}\n"
   "}\n";
-  
+ 
   //create OpenCL program from source
   size_t opencl_program_size = strlen(opencl_program);
   cl_program program = clCreateProgramWithSource(context, numOpenCLPrograms, &opencl_program, &opencl_program_size, &errorcode);
