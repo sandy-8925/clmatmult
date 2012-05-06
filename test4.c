@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 cl_int *a, *b, *c;
 cl_uint *rowinfo;
@@ -32,7 +33,8 @@ int main(int argc, char **argv)
   // global work size - number of work items
   size_t global_work_size;
   cl_device_id device;
-  cl_device_type deviceType;  
+  cl_device_type deviceType;
+  clock_t start, end;
   
   a = b = NULL;
   rowinfo = NULL;
@@ -42,7 +44,7 @@ int main(int argc, char **argv)
   dim1 = 1000;
   dim2 = 1000;
   dim3 = 1000;
-  global_work_size = 96;
+  global_work_size = 10;
   deviceType = CL_DEVICE_TYPE_CPU;
   
   //check commandline arguments and process accordingly
@@ -162,7 +164,7 @@ int main(int argc, char **argv)
   for(counter=0; counter<a_buffer_size; counter++)
   {
     a[counter] = 1;
-    printf("%d ", a[counter]);
+    //printf("%d ", a[counter]);
   }
   printf("\n");
   
@@ -170,7 +172,7 @@ int main(int argc, char **argv)
   for(counter=0; counter<b_buffer_size; counter++)
   {
     b[counter] = 1;
-    printf("%d ", b[counter]);
+    //printf("%d ", b[counter]);
   }
   printf("\n");
   
@@ -187,7 +189,7 @@ int main(int argc, char **argv)
   
   size_t rowinfo_buffer_size = global_work_size * sizeof(cl_uint) * 2;
   cl_mem_flags rowinfo_buffer_flags = CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR;  
-  cl_uint workperitem = (cl_uint) ceil(dim1/global_work_size), remainder;
+  cl_uint workperitem = (cl_uint) floor(dim1/global_work_size), remainder;
   temp = rowinfo;
   startingrownum = 0;
   for(counter=0; counter<global_work_size; counter++)
@@ -197,12 +199,25 @@ int main(int argc, char **argv)
     *temp = workperitem;
     startingrownum += workperitem;
     temp++;
+  }  
+  remainder = dim1 - workperitem*global_work_size;
+  temp = rowinfo+1;
+  while(remainder>0 && temp<(rowinfo+(global_work_size*2)))
+  {
+    *temp += 1;
+    remainder--;
+    temp+=2;
   }
-  temp--;
-  remainder = dim1 - workperitem*(global_work_size-1);
-  *temp = remainder;
+  printf("remainder=%d\n", remainder);
+  if(remainder>0)
+  { printf("Error in distributing work\n");exit(-3); }
   temp = NULL;
   
+  //print contents of rowinfo for debugging purposes
+  printf("Contents of rowinfo:\n");
+  for(counter=1; counter<global_work_size*2; counter+=2)
+  { printf("%d ", rowinfo[counter]); }
+  printf("\n");
   
   cl_mem a_buffer = clCreateBuffer(context, a_buffer_flags, a_buffer_size*sizeof(cl_int), (void *)a, &errorcode);
   checkErr(errorcode, "clCreateBuffer(a)");
@@ -223,12 +238,20 @@ int main(int argc, char **argv)
   clSetKernelArg(kernel, 4, sizeof(rowinfo_buffer), (void *) &rowinfo_buffer);
   
   //enqueue kernel for execution
-  cl_uint global_work_dim;  
+  cl_uint global_work_dim;
   cl_event addKernelEvent;
   
   global_work_dim = 1;
+  
+  start = clock();
+  
   errorcode = clEnqueueNDRangeKernel(queue, kernel, global_work_dim, NULL, &global_work_size, NULL, 0, NULL, &addKernelEvent);
   checkErr(errorcode, "clEnqueueNDRangeKernel");
+  
+  //waits for all the jobs in that queue to finish
+  clFinish(queue);
+  
+  end = clock();
   
   //read array c from OpenCL device memory. map buffer to host memory
   cl_event memReadEvent;
@@ -236,9 +259,8 @@ int main(int argc, char **argv)
   checkErr(errorcode, "clEnqueueMapBuffer");
   
   //waits for all the jobs in that queue to finish
-  clFinish(queue);
+  clFinish(queue);  
   
-  //TODO: check if c is NULL
   if(c == NULL)
   {
     printf("Error: pointer to results is NULL\nExiting...\n");
@@ -246,11 +268,14 @@ int main(int argc, char **argv)
     return 0;
   }
   
+  float exectime = (float)(end-start);
+  printf("CPU clock cycles: %f\n", exectime);
+  /*
   printf("\nContents of array C:\n");
   for(counter=0; counter<c_buffer_size; counter++)
   { printf("%d ", c[counter]); }
   printf("\n");  
-  
+  */
   thatsAllFolks();
   
   return 0;
